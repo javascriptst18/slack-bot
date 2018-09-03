@@ -4,6 +4,7 @@ const WebClient = require('@slack/client').WebClient;
 const CLIENT_EVENTS = require('@slack/client').CLIENT_EVENTS;
 const RTM_EVENTS = require('@slack/client').RTM_EVENTS;
 const fetch = require('isomorphic-fetch');
+const { createServer } = require('http');
 
 const { BEER } = require('./constants');
 
@@ -118,10 +119,11 @@ function connectedStatusReport(message){
     );
 }
 
-rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, connectedStatusReport);
+const server = createServer((req, res) => {
+  rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, connectedStatusReport);
+  rtm.on(RTM_EVENTS.MESSAGE, handleRealTimeMessage);
+  
+  rtm.start();
+});
 
-rtm.on(RTM_EVENTS.MESSAGE, handleRealTimeMessage);
-
-rtm.start();
-
-
+server.listen(process.env.PORT || 4000);
