@@ -119,11 +119,13 @@ function connectedStatusReport(message){
     );
 }
 
+rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, connectedStatusReport);
+rtm.on(RTM_EVENTS.MESSAGE, handleRealTimeMessage);
+
+rtm.start();
+
 const server = createServer((req, res) => {
-  rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, connectedStatusReport);
-  rtm.on(RTM_EVENTS.MESSAGE, handleRealTimeMessage);
-  
-  rtm.start();
+  res.end('Yupp');
 });
 
 server.listen(process.env.PORT || 4000);
