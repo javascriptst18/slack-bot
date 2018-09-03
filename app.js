@@ -34,6 +34,8 @@ function checkCaseBasedOnMessage(text) {
     return 'darksky';
   } else if (checkIfBeerExists(text)){
     return 'beer';
+  } else if (message.includes('banan') || message.includes('banana') || message.includes('bananer') ||  message.includes('bananas')){
+    return 'banana';
   }
   return 'default';
 }
@@ -52,6 +54,8 @@ function handleRealTimeMessage(message) {
       case 'beer':
         sendBeerMessage(message);
         break;
+      case 'banana':
+        rtm.sendMessage(":banana:", message.channel);
       default:
         return 'default';
     }
