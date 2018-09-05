@@ -3,6 +3,7 @@ const RtmClient = require('@slack/client').RtmClient;
 const WebClient = require('@slack/client').WebClient;
 const CLIENT_EVENTS = require('@slack/client').CLIENT_EVENTS;
 const RTM_EVENTS = require('@slack/client').RTM_EVENTS;
+const TurndownService = require('turndown');
 const fetch = require('isomorphic-fetch');
 const { createServer } = require('http');
 
@@ -16,6 +17,7 @@ const DARK_SKY_API_KEY = process.env.DARK_SKY_API_KEY || '';
 const rtm = new RtmClient(TOKEN);
 // Used for just sending messages, for example: attachments
 const web = new WebClient(TOKEN);
+const turndownService = new TurndownService()
 
 function isBot(text) {
   return text && text.includes(BOT_USER_ID);
@@ -37,6 +39,8 @@ function checkCaseBasedOnMessage(text) {
     return 'beer';
   } else if (message.includes('banan') || message.includes('banana') || message.includes('bananer') ||  message.includes('bananas')){
     return 'banana';
+  } else if (message.includes('canvas')){
+    return 'canvas';
   }
   return 'default';
 }
@@ -57,6 +61,9 @@ function handleRealTimeMessage(message) {
         break;
       case 'banana':
         rtm.sendMessage(":banana:", message.channel);
+      case 'canvas':
+        fetchAndSendAnnouncements(message);
+        break;
       default:
         return 'default';
     }
@@ -111,6 +118,42 @@ function sendBeerMessage(message){
   );
 }
 
+async function getAnnouncements(){
+  const response = await fetch('https://canvas.academy.se/api/v1/announcements?context_codes[]=course_33', {
+    method: 'GET',
+    headers: {
+      'Authorization' : `Bearer ${process.env.CANVAS_TOKEN}`
+    }
+  });
+  return response.json();
+}
+
+async function fetchAndSendAnnouncements(message) {
+  const announcements = await getAnnouncements();
+  const attachments = await announcements.slice(0,3).map(formatAnnouncement);
+  web.chat.postMessage(
+      message.channel,
+      'De tre senaste meddelandena från canvas',
+      { attachments, as_user: true },
+      (error, response) => {
+        if (error) console.log(error.message);
+      }
+  );
+}
+
+function formatAnnouncement(announcement){
+  return {
+    title: announcement.title,
+		title_link: announcement.html_url,
+		author_icon: announcement.author.avatar_image_url,
+		author_name: announcement.author.display_name,
+		author_link: announcement.author.html_url,
+    text: turndownService.turndown(announcement.message),
+    ts: announcement.posted_at,
+		mrkdwn_in: ["text", "pretext"]
+  }
+}
+
 function connectedStatusReport(message){
     console.log(
       `Logged in as ${message.self.name} of team ${
@@ -123,6 +166,8 @@ rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, connectedStatusReport);
 rtm.on(RTM_EVENTS.MESSAGE, handleRealTimeMessage);
 
 rtm.start();
+
+
 
 const server = createServer((req, res) => {
   res.end('Yupp');
